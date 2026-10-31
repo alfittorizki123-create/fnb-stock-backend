@@ -4,17 +4,20 @@ const redis = require('./config/redis');
 const { successResponse, errorResponse } = require('./utils/response');
 const errorHandler = require('./middlewares/errorHandler');
 
+// Import routes
+const materialRoutes = require('./routes/material.routes');
+const orderRoutes = require('./routes/order.routes');
+
 const app = express();
 
 // 1. Middleware Global
-app.use(cors()); // Mengizinkan akses dari Frontend React (Cross-Origin Resource Sharing)
-app.use(express.json()); // Parsing payload body berformat application/json
+app.use(cors());
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 2. Endpoint Healthcheck (Pemeriksaan Kesehatan Server & Redis)
+// 2. Endpoint Healthcheck
 app.get('/health', async (req, res, next) => {
   try {
-    // Uji apakah Redis merespons
     const redisStatus = await redis.ping();
 
     return successResponse(res, {
@@ -23,7 +26,7 @@ app.get('/health', async (req, res, next) => {
       data: {
         status: 'healthy',
         uptime: `${process.uptime().toFixed(2)} detik`,
-        redis: redisStatus, // Harusnya 'PONG'
+        redis: redisStatus,
         environment: process.env.NODE_ENV,
       },
     });
@@ -32,7 +35,11 @@ app.get('/health', async (req, res, next) => {
   }
 });
 
-// 3. Fallback Route: Menangani Rute yang Tidak Terdaftar (404 Not Found)
+// 3. API Routes v1
+app.use('/api/v1/materials', materialRoutes);
+app.use('/api/v1/orders', orderRoutes);
+
+// 4. Fallback Route (404 Not Found)
 app.use((req, res) => {
   return errorResponse(res, {
     statusCode: 404,
@@ -41,7 +48,7 @@ app.use((req, res) => {
   });
 });
 
-// 4. Centralized Error Handler (Wajib paling bawah)
+// 5. Centralized Error Handler (Wajib paling bawah)
 app.use(errorHandler);
 
 module.exports = app;
