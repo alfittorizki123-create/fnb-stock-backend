@@ -1,0 +1,83 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "F&B Stock Management API",
+    "version": "1.0.0",
+    "description": "Dokumentasi REST API Sistem Pengelolaan Stok Restoran F&B berbasis Express, Redis, dan Supabase."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Server Pengembangan Lokal"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Pemeriksaan Kesehatan Sistem",
+        "description": "Mengembalikan status aktif server Express dan konektivitas kontainer Redis.",
+        "responses": {
+          "200": {
+            "description": "Server dan Redis beroperasi normal"
+          }
+        }
+      }
+    },
+    "/api/v1/materials": {
+      "get": {
+        "summary": "Katalog Stok Bahan Baku (Redis Cache)",
+        "description": "Mengambil seluruh daftar bahan mentah beserta total stok aktual dari batch aktif menggunakan strategi Cache-Aside Redis.",
+        "responses": {
+          "200": {
+            "description": "Katalog bahan berhasil dimuat"
+          }
+        }
+      }
+    },
+    "/api/v1/orders": {
+      "post": {
+        "summary": "Pemesanan Menu Makanan (FIFO & Redis Lock)",
+        "description": "Memproses pesanan menu kasir, memotong stok bahan yang mendekati kadaluwarsa lebih dulu (FIFO), dan mencatat jejak mutasi.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["menuItemId"],
+                "properties": {
+                  "menuItemId": {
+                    "type": "string",
+                    "example": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                    "description": "ID Menu (contoh: Classic Cheeseburger)"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "example": 1,
+                    "description": "Jumlah porsi yang dipesan"
+                  },
+                  "referenceId": {
+                    "type": "string",
+                    "example": "ORDER-SWAGGER-001",
+                    "description": "Nomor referensi atau invoice pesanan"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pesanan berhasil diproses dan stok bahan terpotong"
+          },
+          "400": {
+            "description": "Stok bahan tidak mencukupi"
+          },
+          "409": {
+            "description": "Terjadi bentrok transaksi bersamaan (Redis Lock)"
+          }
+        }
+      }
+    }
+  }
+}

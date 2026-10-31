@@ -1,3 +1,5 @@
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./docs/swagger.json');
 const express = require('express');
 const cors = require('cors');
 const redis = require('./config/redis');
@@ -14,6 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // 2. Endpoint Healthcheck
 app.get('/health', async (req, res, next) => {
