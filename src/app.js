@@ -9,6 +9,8 @@ const errorHandler = require('./middlewares/errorHandler');
 // Import routes
 const materialRoutes = require('./routes/material.routes');
 const orderRoutes = require('./routes/order.routes');
+const internalRoutes = require('./routes/internal.routes');
+const internalAuth = require('./middlewares/internalAuth');
 
 const app = express();
 
@@ -17,8 +19,25 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.get('/swagger.json', (req, res) => res.json(swaggerDocument));
 
 // 2. Endpoint Healthcheck
+app.get('/reference', (req, res) => {
+  res.send(`
+    <!doctype html>
+    <html>
+      <head>
+        <title>F&B Stock API - Scalar Reference</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body>
+        <script id="api-reference" data-url="/swagger.json"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+      </body>
+    </html>
+  `);
+});
 app.get('/health', async (req, res, next) => {
   try {
     const redisStatus = await redis.ping();
@@ -41,6 +60,7 @@ app.get('/health', async (req, res, next) => {
 // 3. API Routes v1
 app.use('/api/v1/materials', materialRoutes);
 app.use('/api/v1/orders', orderRoutes);
+app.use('/api/v1/internal', internalAuth, internalRoutes);
 
 // 4. Fallback Route (404 Not Found)
 app.use((req, res) => {

@@ -3,7 +3,7 @@
   "info": {
     "title": "F&B Stock Management API",
     "version": "1.0.0",
-    "description": "Dokumentasi REST API Sistem Pengelolaan Stok Restoran F&B berbasis Express, Redis, dan Supabase."
+    "description": "Dokumentasi REST API Sistem Pengelolaan Stok Restoran F&B berbasis Express, Redis, dan Supabase. Melayani integrasi Frontend React, AI Engineer (Chatbot LLM), dan Data Scientist (Forecasting)."
   },
   "servers": [
     {
@@ -17,9 +17,7 @@
         "summary": "Pemeriksaan Kesehatan Sistem",
         "description": "Mengembalikan status aktif server Express dan konektivitas kontainer Redis.",
         "responses": {
-          "200": {
-            "description": "Server dan Redis beroperasi normal"
-          }
+          "200": { "description": "Server dan Redis beroperasi normal" }
         }
       }
     },
@@ -28,9 +26,7 @@
         "summary": "Katalog Stok Bahan Baku (Redis Cache)",
         "description": "Mengambil seluruh daftar bahan mentah beserta total stok aktual dari batch aktif menggunakan strategi Cache-Aside Redis.",
         "responses": {
-          "200": {
-            "description": "Katalog bahan berhasil dimuat"
-          }
+          "200": { "description": "Katalog bahan berhasil dimuat" }
         }
       }
     },
@@ -46,36 +42,106 @@
                 "type": "object",
                 "required": ["menuItemId"],
                 "properties": {
-                  "menuItemId": {
-                    "type": "string",
-                    "example": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                    "description": "ID Menu (contoh: Classic Cheeseburger)"
-                  },
-                  "quantity": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "Jumlah porsi yang dipesan"
-                  },
-                  "referenceId": {
-                    "type": "string",
-                    "example": "ORDER-SWAGGER-001",
-                    "description": "Nomor referensi atau invoice pesanan"
-                  }
+                  "menuItemId": { "type": "string", "example": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" },
+                  "quantity": { "type": "integer", "example": 1 },
+                  "referenceId": { "type": "string", "example": "ORDER-SWAGGER-001" }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": "Pesanan berhasil diproses dan stok bahan terpotong"
+          "201": { "description": "Pesanan berhasil diproses dan stok bahan terpotong" },
+          "400": { "description": "Stok bahan tidak mencukupi" }
+        }
+      }
+    },
+    "/api/v1/internal/materials/summary": {
+      "get": {
+        "summary": "[AI Engineer] Tool Calling Ringkasan Stok Cepat",
+        "description": "Endpoint berkecepatan tinggi (< 5ms dari Redis) khusus untuk agen Chatbot Gudang LLM saat staf bertanya sisa bahan.",
+        "parameters": [
+          {
+            "name": "X-Internal-Secret",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "example": "fnb_secret_internal_key_2026" },
+            "description": "Kunci rahasia komunikasi antar-servis"
           },
-          "400": {
-            "description": "Stok bahan tidak mencukupi"
-          },
-          "409": {
-            "description": "Terjadi bentrok transaksi bersamaan (Redis Lock)"
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "example": "daging" },
+            "description": "Kata kunci pencarian nama bahan"
           }
+        ],
+        "responses": {
+          "200": { "description": "Ringkasan stok bahan berhasil dimuat" },
+          "401": { "description": "Akses ditolak (Header X-Internal-Secret salah atau tidak ada)" }
+        }
+      }
+    },
+    "/api/v1/internal/analytics/movements": {
+      "get": {
+        "summary": "[Data Scientist] Tarik Data Mutasi Deret Waktu",
+        "description": "Menarik data historis pergerakan keluar-masuk stok untuk melatih model Machine Learning prediksi stok habis.",
+        "parameters": [
+          {
+            "name": "X-Internal-Secret",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "example": "fnb_secret_internal_key_2026" }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "example": 30 },
+            "description": "Rentang data historis dalam jumlah hari (default: 30 hari)"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Data time-series berhasil dimuat" },
+          "401": { "description": "Akses ditolak" }
+        }
+      }
+    },
+    "/api/v1/internal/forecasts": {
+      "post": {
+        "summary": "[Data Scientist] Setor Hasil Prediksi Habis Stok",
+        "description": "Menyetor hasil kalkulasi model AI ke database Supabase dan otomatis di-cache ke Redis untuk dashboard manajer restoran.",
+        "parameters": [
+          {
+            "name": "X-Internal-Secret",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string", "example": "fnb_secret_internal_key_2026" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["materialId", "predictedStockoutDate", "daysRemaining", "recommendedReorderQty", "confidenceScore"],
+                "properties": {
+                  "materialId": { "type": "string", "example": "11111111-1111-1111-1111-111111111111" },
+                  "predictedStockoutDate": { "type": "string", "example": "2026-11-03T10:00:00Z" },
+                  "daysRemaining": { "type": "number", "example": 2.5 },
+                  "recommendedReorderQty": { "type": "number", "example": 5000 },
+                  "confidenceScore": { "type": "number", "example": 0.945 },
+                  "modelVersion": { "type": "string", "example": "v1.2-arima" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Hasil prediksi berhasil disimpan dan di-cache" },
+          "400": { "description": "Payload tidak valid (Validasi Joi gagal)" },
+          "401": { "description": "Akses ditolak" }
         }
       }
     }
