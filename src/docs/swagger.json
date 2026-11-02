@@ -17,7 +17,24 @@
         "summary": "Pemeriksaan Kesehatan Sistem",
         "description": "Mengembalikan status aktif server Express dan konektivitas kontainer Redis.",
         "responses": {
-          "200": { "description": "Server dan Redis beroperasi normal" }
+          "200": {
+            "description": "Server dan Redis beroperasi normal",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "message": "Sistem F&B Stock Backend beroperasi normal",
+                  "data": {
+                    "status": "healthy",
+                    "uptime": "120.45 detik",
+                    "redis": "PONG",
+                    "environment": "development"
+                  },
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -26,7 +43,32 @@
         "summary": "Katalog Stok Bahan Baku (Redis Cache)",
         "description": "Mengambil seluruh daftar bahan mentah beserta total stok aktual dari batch aktif menggunakan strategi Cache-Aside Redis.",
         "responses": {
-          "200": { "description": "Katalog bahan berhasil dimuat" }
+          "200": {
+            "description": "Katalog bahan berhasil dimuat",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "message": "Data katalog stok bahan berhasil dimuat",
+                  "data": [
+                    {
+                      "id": "11111111-1111-1111-1111-111111111111",
+                      "name": "Daging Sapi Patty",
+                      "category": "MEAT",
+                      "unit": "GRAM",
+                      "minimumStock": 500,
+                      "currentStock": 4050,
+                      "isLowStock": false
+                    }
+                  ],
+                  "meta": {
+                    "dataSource": "CACHE (Redis)",
+                    "timestamp": "2026-11-01T10:00:00.000Z"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -51,8 +93,44 @@
           }
         },
         "responses": {
-          "201": { "description": "Pesanan berhasil diproses dan stok bahan terpotong" },
-          "400": { "description": "Stok bahan tidak mencukupi" }
+          "201": {
+            "description": "Pesanan berhasil diproses dan stok bahan terpotong",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "message": "Pesanan berhasil diproses dan stok bahan telah dipotong via FIFO",
+                  "data": {
+                    "orderId": "ORDER-SWAGGER-001",
+                    "menuName": "Classic Cheeseburger",
+                    "quantityOrdered": 1,
+                    "totalPrice": 45000,
+                    "materialsDeducted": [
+                      { "material": "Daging Sapi Patty", "amountDeducted": "150 GRAM" },
+                      { "material": "Roti Bun Burger", "amountDeducted": "1 PCS" },
+                      { "material": "Keju Cheddar Slice", "amountDeducted": "1 PCS" }
+                    ]
+                  },
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Stok bahan tidak mencukupi",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "INSUFFICIENT_STOCK",
+                    "message": "Stok bahan 'Daging Sapi Patty' tidak mencukupi! Butuh 150000 GRAM, sisa 4050 GRAM"
+                  },
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -77,8 +155,36 @@
           }
         ],
         "responses": {
-          "200": { "description": "Ringkasan stok bahan berhasil dimuat" },
-          "401": { "description": "Akses ditolak (Header X-Internal-Secret salah atau tidak ada)" }
+          "200": {
+            "description": "Ringkasan stok bahan berhasil dimuat",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "message": "Ringkasan stok bahan untuk agen AI berhasil dimuat",
+                  "data": [
+                    { "name": "Daging Sapi Patty", "currentStock": 4050, "unit": "GRAM", "status": "SAFE" }
+                  ],
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Akses ditolak (Header X-Internal-Secret salah atau tidak ada)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "UNAUTHORIZED_INTERNAL_ACCESS",
+                    "message": "Akses ditolak: Header X-Internal-Secret tidak valid atau tidak disertakan"
+                  },
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -102,8 +208,47 @@
           }
         ],
         "responses": {
-          "200": { "description": "Data time-series berhasil dimuat" },
-          "401": { "description": "Akses ditolak" }
+          "200": {
+            "description": "Data time-series berhasil dimuat",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "message": "Data pergerakan stok untuk analitik model berhasil dimuat",
+                  "data": {
+                    "periodDays": 30,
+                    "totalMovements": 9,
+                    "movements": [
+                      {
+                        "id": "7ebceea5-26bf-4880-aaad-44063622fcb9",
+                        "quantity_delta": -150,
+                        "movement_type": "SALE_ORDER",
+                        "reference_id": "ORDER-POSTMAN-001",
+                        "created_at": "2026-10-30T17:00:30.329Z",
+                        "raw_materials": { "name": "Daging Sapi Patty", "unit": "GRAM" }
+                      }
+                    ]
+                  },
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Akses ditolak",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "UNAUTHORIZED_INTERNAL_ACCESS",
+                    "message": "Akses ditolak: Header X-Internal-Secret tidak valid atau tidak disertakan"
+                  },
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -128,10 +273,10 @@
                 "required": ["materialId", "predictedStockoutDate", "daysRemaining", "recommendedReorderQty", "confidenceScore"],
                 "properties": {
                   "materialId": { "type": "string", "example": "11111111-1111-1111-1111-111111111111" },
-                  "predictedStockoutDate": { "type": "string", "example": "2026-11-03T10:00:00Z" },
-                  "daysRemaining": { "type": "number", "example": 2.5 },
+                  "predictedStockoutDate": { "type": "string", "example": "2026-11-04T12:00:00Z" },
+                  "daysRemaining": { "type": "number", "example": 3.0 },
                   "recommendedReorderQty": { "type": "number", "example": 5000 },
-                  "confidenceScore": { "type": "number", "example": 0.945 },
+                  "confidenceScore": { "type": "number", "example": 0.95 },
                   "modelVersion": { "type": "string", "example": "v1.2-arima" }
                 }
               }
@@ -139,9 +284,59 @@
           }
         },
         "responses": {
-          "201": { "description": "Hasil prediksi berhasil disimpan dan di-cache" },
-          "400": { "description": "Payload tidak valid (Validasi Joi gagal)" },
-          "401": { "description": "Akses ditolak" }
+          "201": {
+            "description": "Hasil prediksi berhasil disimpan dan di-cache",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "message": "Hasil ramalan prediksi stok berhasil disimpan dan di-cache ke Redis",
+                  "data": {
+                    "id": "cde9484b-2d8d-4dbf-af1e-6bd32036f8c7",
+                    "material_id": "11111111-1111-1111-1111-111111111111",
+                    "predicted_stockout_date": "2026-11-04T12:00:00.000Z",
+                    "days_remaining": 3,
+                    "recommended_reorder_qty": 5000,
+                    "confidence_score": 0.95,
+                    "model_version": "v1.2-arima",
+                    "created_at": "2026-11-01T11:03:29.559Z"
+                  },
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload tidak valid (Validasi Joi gagal)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Format data input tidak valid",
+                    "details": [{ "field": "daysRemaining", "message": "daysRemaining tidak boleh bernilai negatif" }]
+                  },
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Akses ditolak",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "UNAUTHORIZED_INTERNAL_ACCESS",
+                    "message": "Akses ditolak: Header X-Internal-Secret tidak valid atau tidak disertakan"
+                  },
+                  "meta": { "timestamp": "2026-11-01T10:00:00.000Z" }
+                }
+              }
+            }
+          }
         }
       }
     }
